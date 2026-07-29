@@ -220,7 +220,7 @@ canvas{display:block}
     <div class="nav-item" data-tab="insights">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
       <span>AI 인사이트</span>
-      <span class="nav-badge warn" id="insight-badge">6</span>
+      <span class="nav-badge warn" id="insight-badge">7</span>
     </div>
     <div class="nav-section">분석</div>
     <div class="nav-item" data-tab="pool">
@@ -1328,6 +1328,19 @@ function buildInsights(){
   const worstPTeam=DATA.teams_p.slice().sort((a,b)=>a.pass_rate-b.pass_rate)[0];
 
   const insights=[
+    {
+      severity:'critical',
+      title:'구조적 결함 — 인성 합격 기준이 위험 지표를 완전히 무시',
+      body:`현재 인성 합격 판정(평균 STEN≥3)은 학습·소통·실행·성장 4개 긍정 역량만 봅니다. 조직부적응·공격성·불안·우울·자아취약성·편집증 등 7개 위험 지표는 판정 로직에 포함되어 있지 않습니다. 그 결과, 인성 합격자 648명 중 386명(59.6%)이 최소 하나의 위험 지표에서 STEN≥8을 기록한 채 통과됩니다. 재무팀이 대표적 사례로, 인성 합격률 99%이면서 고위험률이 68%입니다. 긍정 역량이 높고 위험 지표도 동시에 높은 것은 심리학적으로 충분히 성립하며, 두 척도는 서로 독립적입니다.`,
+      stats:[
+        {v:'386명',l:'합격자 중 고위험 (59.6%)'},
+        {v:'21.3%',l:'합격자 중 편집증≥8'},
+        {v:'19.9%',l:'합격자 중 우울≥8'}
+      ],
+      action:'<strong>구조 개선:</strong> 합격 기준에 위험 지표 상한 추가 검토. 예: 긍정 AVG≥3 AND 위험 지표 최대값<8. 즉각 도입 전 탈락 규모(현 합격자 648→262명)를 감안해 채용 계획과 함께 조율 필요.',
+      confidence:'높음 (N=648, 합격자 전수)',
+      why:'현재 기준은 고위험 후보자를 걸러내지 못한다. 합격 통보 후 입사한 고위험자는 조직 내 갈등·이직·법적 리스크로 이어짐'
+    },
     {
       severity:'critical',
       title:'고위험 심리 지표 — 전체의 59.7% 해당',
