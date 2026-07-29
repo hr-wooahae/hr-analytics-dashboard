@@ -180,6 +180,9 @@ canvas{display:block}
 .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .filter-btn{padding:5px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);transition:all .15s;background:var(--surface)}
 .filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.col-filter-sel{padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;cursor:pointer;max-width:140px}
+.col-filter-sel:focus{border-color:var(--accent)}
+.col-filter-sel.active-filter{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .table-scroll{overflow-x:auto;border-radius:8px}
 #exp-count{font-size:12px;color:var(--muted);margin-bottom:8px}
 .page-btns{display:flex;gap:4px;margin-top:12px;justify-content:center}
@@ -508,6 +511,23 @@ canvas{display:block}
         </div>
         <input type="text" id="exp-search" placeholder="이름, 팀명, 직무 검색...">
         <div style="height:10px"></div>
+        <!-- 컬럼 필터 -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 0 4px;border-top:1px solid var(--border)">
+          <select id="f-team" class="col-filter-sel"><option value="">팀명 전체</option></select>
+          <select id="f-job"  class="col-filter-sel"><option value="">직무 전체</option></select>
+          <select id="f-apt"  class="col-filter-sel">
+            <option value="">적성 전체</option>
+            <option value="pass">적성 합격</option>
+            <option value="fail">적성 불합격</option>
+            <option value="none">적성 미응시</option>
+          </select>
+          <select id="f-learn" class="col-filter-sel"><option value="0">학습 전체</option></select>
+          <select id="f-comm"  class="col-filter-sel"><option value="0">소통 전체</option></select>
+          <select id="f-exec"  class="col-filter-sel"><option value="0">실행 전체</option></select>
+          <select id="f-grow"  class="col-filter-sel"><option value="0">성장 전체</option></select>
+          <button id="f-reset" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--muted);background:var(--surface);cursor:pointer">초기화</button>
+        </div>
+        <div style="height:8px"></div>
         <div id="exp-count" style="color:var(--muted);font-size:12px"></div>
         <div class="table-scroll">
           <table class="data-table" id="t-explorer">
@@ -1526,6 +1546,7 @@ function buildTeamTable(){
 // ======== DATA EXPLORER ========
 let expFilter='all';let expSearch='';let expPage=0;const EXP_PAGE=20;
 let expData=[];
+let expColF={team:'',job:'',apt:'',learn:0,comm:0,exec:0,grow:0};
 
 function buildExplorer(){
   const aptEmails=new Set(DATA.candidates_a.map(c=>c.email));
@@ -1535,7 +1556,21 @@ function buildExplorer(){
     return {...p,apt_avg:a?a.avg_sten:null,apt_pass:a?a.pass_test:null,has_apt:!!a};
   });
 
-  // Filter buttons
+  // 팀명 / 직무 셀렉트 채우기
+  const teams=[...new Set(expData.map(p=>p.team).filter(Boolean))].sort();
+  const jobs=[...new Set(expData.map(p=>p.job).filter(Boolean))].sort();
+  const fTeam=c('f-team'),fJob=c('f-job');
+  teams.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;fTeam.appendChild(o);});
+  jobs.forEach(j=>{const o=document.createElement('option');o.value=j;o.textContent=j;fJob.appendChild(o);});
+
+  // STEN 셀렉트 (1~10 최솟값)
+  ['f-learn','f-comm','f-exec','f-grow'].forEach((id,i)=>{
+    const lbl=['학습','소통','실행','성장'][i];
+    const sel=c(id);
+    for(let v=1;v<=10;v++){const o=document.createElement('option');o.value=v;o.textContent=`${lbl} ≥ ${v}`;sel.appendChild(o);}
+  });
+
+  // 이벤트 - 상태필터 버튼
   $$('.filter-btn').forEach(btn=>{
     btn.addEventListener('click',function(){
       $$('.filter-btn').forEach(b=>b.classList.remove('active'));
@@ -1544,8 +1579,38 @@ function buildExplorer(){
     });
   });
 
+  // 이벤트 - 텍스트 검색
   c('exp-search').addEventListener('input',function(){
     expSearch=this.value.toLowerCase();expPage=0;renderExplorer();
+  });
+
+  // 이벤트 - 컬럼 필터 셀렉트
+  const colSelIds=['f-team','f-job','f-apt','f-learn','f-comm','f-exec','f-grow'];
+  colSelIds.forEach(id=>{
+    c(id).addEventListener('change',function(){
+      const sel=c(id);
+      expColF.team=c('f-team').value;
+      expColF.job=c('f-job').value;
+      expColF.apt=c('f-apt').value;
+      expColF.learn=parseInt(c('f-learn').value)||0;
+      expColF.comm=parseInt(c('f-comm').value)||0;
+      expColF.exec=parseInt(c('f-exec').value)||0;
+      expColF.grow=parseInt(c('f-grow').value)||0;
+      // 활성 표시
+      colSelIds.forEach(sid=>{
+        const s=c(sid);
+        const active=s.value&&s.value!=='0';
+        s.classList.toggle('active-filter',!!active);
+      });
+      expPage=0;renderExplorer();
+    });
+  });
+
+  // 이벤트 - 초기화
+  c('f-reset').addEventListener('click',()=>{
+    colSelIds.forEach(sid=>{c(sid).selectedIndex=0;c(sid).classList.remove('active-filter');});
+    expColF={team:'',job:'',apt:'',learn:0,comm:0,exec:0,grow:0};
+    expPage=0;renderExplorer();
   });
 
   renderExplorer();
@@ -1564,6 +1629,17 @@ function renderExplorer(){
     return (p.name||'').toLowerCase().includes(expSearch)||
       (p.team||'').toLowerCase().includes(expSearch)||
       (p.job||'').toLowerCase().includes(expSearch);
+  }).filter(p=>{
+    if(expColF.team && p.team!==expColF.team)return false;
+    if(expColF.job  && p.job!==expColF.job)return false;
+    if(expColF.apt==='pass'  && p.apt_pass!==true)return false;
+    if(expColF.apt==='fail'  && p.apt_pass!==false)return false;
+    if(expColF.apt==='none'  && p.has_apt)return false;
+    if(expColF.learn>0 && (p.learn_sten==null||p.learn_sten<expColF.learn))return false;
+    if(expColF.comm >0 && (p.comm_sten==null ||p.comm_sten <expColF.comm))return false;
+    if(expColF.exec >0 && (p.exec_sten==null ||p.exec_sten <expColF.exec))return false;
+    if(expColF.grow >0 && (p.grow_sten==null ||p.grow_sten <expColF.grow))return false;
+    return true;
   });
 
   const total=filtered.length;
