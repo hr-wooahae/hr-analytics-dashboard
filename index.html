@@ -183,6 +183,11 @@ canvas{display:block}
 .col-filter-sel{padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;cursor:pointer;max-width:140px}
 .col-filter-sel:focus{border-color:var(--accent)}
 .col-filter-sel.active-filter{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.data-table th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+.data-table th.sortable:hover{color:var(--accent)}
+.data-table th.sort-asc::after{content:' ↑';color:var(--accent)}
+.data-table th.sort-desc::after{content:' ↓';color:var(--accent)}
+.data-table th.sortable:not(.sort-asc):not(.sort-desc)::after{content:' ↕';opacity:.35}
 .table-scroll{overflow-x:auto;border-radius:8px}
 #exp-count{font-size:12px;color:var(--muted);margin-bottom:8px}
 .page-btns{display:flex;gap:4px;margin-top:12px;justify-content:center}
@@ -533,9 +538,20 @@ canvas{display:block}
           <table class="data-table" id="t-explorer">
             <thead>
               <tr>
-                <th>성함</th><th>팀명</th><th>직무</th><th>검사일자</th><th>인성 AVG</th>
-                <th>학습</th><th>소통</th><th>실행</th><th>성장</th>
-                <th>인성합격</th><th>고위험</th><th>경계선</th><th>적성 AVG</th><th>적성합격</th>
+                <th class="sortable" data-col="name">성함</th>
+                <th class="sortable" data-col="team">팀명</th>
+                <th class="sortable" data-col="job">직무</th>
+                <th class="sortable" data-col="date">검사일자</th>
+                <th class="sortable" data-col="avg_sten">인성 AVG</th>
+                <th class="sortable" data-col="learn_sten">학습</th>
+                <th class="sortable" data-col="comm_sten">소통</th>
+                <th class="sortable" data-col="exec_sten">실행</th>
+                <th class="sortable" data-col="grow_sten">성장</th>
+                <th class="sortable" data-col="pass_test">인성합격</th>
+                <th class="sortable" data-col="high_risk">고위험</th>
+                <th class="sortable" data-col="borderline">경계선</th>
+                <th class="sortable" data-col="apt_avg">적성 AVG</th>
+                <th class="sortable" data-col="apt_pass">적성합격</th>
               </tr>
             </thead>
             <tbody id="t-explorer-body"></tbody>
@@ -1547,6 +1563,7 @@ function buildTeamTable(){
 let expFilter='all';let expSearch='';let expPage=0;const EXP_PAGE=20;
 let expData=[];
 let expColF={team:'',job:'',apt:'',learn:0,comm:0,exec:0,grow:0};
+let expSort={col:null,dir:1};
 
 function buildExplorer(){
   const aptEmails=new Set(DATA.candidates_a.map(c=>c.email));
@@ -1613,6 +1630,16 @@ function buildExplorer(){
     expPage=0;renderExplorer();
   });
 
+  // 이벤트 - 컬럼 정렬
+  $$('#t-explorer th.sortable').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const col=th.dataset.col;
+      if(expSort.col===col){expSort.dir*=-1;}
+      else{expSort.col=col;expSort.dir=1;}
+      expPage=0;renderExplorer();
+    });
+  });
+
   renderExplorer();
 }
 
@@ -1640,6 +1667,26 @@ function renderExplorer(){
     if(expColF.exec >0 && (p.exec_sten==null ||p.exec_sten <expColF.exec))return false;
     if(expColF.grow >0 && (p.grow_sten==null ||p.grow_sten <expColF.grow))return false;
     return true;
+  });
+
+  // 정렬
+  if(expSort.col){
+    const col=expSort.col,dir=expSort.dir;
+    filtered.sort((a,b)=>{
+      let av=a[col],bv=b[col];
+      if(av==null&&bv==null)return 0;
+      if(av==null)return 1;
+      if(bv==null)return -1;
+      if(typeof av==='boolean')av=av?1:0,bv=bv?1:0;
+      if(typeof av==='string')return dir*av.localeCompare(bv,'ko');
+      return dir*(av-bv);
+    });
+  }
+
+  // 헤더 클래스 동기화
+  $$('#t-explorer th.sortable').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+    if(th.dataset.col===expSort.col)th.classList.add(expSort.dir===1?'sort-asc':'sort-desc');
   });
 
   const total=filtered.length;
