@@ -459,6 +459,48 @@ canvas{display:block}
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px">X축: 학습·소통·실행·성장·진실성·협력 평균 STEN | Y축: 위험 지표 평균 STEN | 점에 마우스를 올리면 정보가 표시됩니다</div>
       </div>
+
+      <!-- 직무별 분포 -->
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">직무별 합격률 (상위 20개)</span>
+            <div style="font-size:11px;color:var(--muted)">인원 많은 순 · 중복 제거</div>
+          </div>
+          <div class="chart-wrap"><canvas id="c-job-pass" height="520"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">직무별 고위험률 (상위 20개)</span>
+            <div style="font-size:11px;color:var(--muted)">인원 많은 순 · 중복 제거</div>
+          </div>
+          <div class="chart-wrap"><canvas id="c-job-risk" height="520"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <span class="card-title">직무별 상세 지표</span>
+          <div style="font-size:11px;color:var(--muted)">헤더 클릭으로 정렬</div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="t-job-dist">
+            <thead><tr>
+              <th class="sortable" data-jcol="job">직무</th>
+              <th class="sortable" data-jcol="count">인원</th>
+              <th class="sortable" data-jcol="pass_count">합격자</th>
+              <th class="sortable" data-jcol="pass_rate">합격률</th>
+              <th class="sortable" data-jcol="risk_count">고위험자</th>
+              <th class="sortable" data-jcol="risk_rate">고위험률</th>
+              <th class="sortable" data-jcol="avg_sten">인성 AVG</th>
+              <th class="sortable" data-jcol="learn">학습 avg</th>
+              <th class="sortable" data-jcol="comm">소통 avg</th>
+              <th class="sortable" data-jcol="exec">실행 avg</th>
+              <th class="sortable" data-jcol="grow">성장 avg</th>
+            </tr></thead>
+            <tbody id="t-job-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ===== TREND ===== -->
@@ -878,6 +920,7 @@ function init(){
   buildExplorer();
   initCutoff();
   initTalentMap();
+  buildJobDist();
 }
 
 function renderAll(){
@@ -1092,6 +1135,102 @@ function renderRisk(){
     color:teamRiskSorted.map(t=>t.high_risk_rate>=60?cv('--fail'):t.high_risk_rate>=40?cv('--risk'):cv('--warn')),
     maxW:100,formatVal:v=>v.toFixed(0)+'%'
   });
+}
+
+// ======== JOB DISTRIBUTION ========
+let jobData=[];
+let jobSort={col:'count',dir:-1};
+
+function buildJobDist(){
+  // 이메일 기준 중복 제거 (최신 응시)
+  const seen={};
+  [...DATA.candidates_p].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(p=>{
+    seen[p.email]=p;
+  });
+  const dedup=Object.values(seen);
+
+  // 직무별 집계
+  const map={};
+  dedup.forEach(p=>{
+    const j=p.job||'미분류';
+    if(!map[j])map[j]={job:j,count:0,pass_count:0,risk_count:0,
+      learn_sum:0,comm_sum:0,exec_sum:0,grow_sum:0,sten_sum:0};
+    const m=map[j];
+    m.count++;
+    if(p.pass_test)m.pass_count++;
+    if(p.high_risk)m.risk_count++;
+    m.learn_sum+=p.learn_sten||0;
+    m.comm_sum+=p.comm_sten||0;
+    m.exec_sum+=p.exec_sten||0;
+    m.grow_sum+=p.grow_sten||0;
+    m.sten_sum+=p.avg_sten||0;
+  });
+
+  jobData=Object.values(map).map(m=>({
+    ...m,
+    pass_rate: m.count?Math.round(m.pass_count/m.count*1000)/10:0,
+    risk_rate: m.count?Math.round(m.risk_count/m.count*1000)/10:0,
+    avg_sten:  m.count?Math.round(m.sten_sum/m.count*100)/100:0,
+    learn: m.count?Math.round(m.learn_sum/m.count*10)/10:0,
+    comm:  m.count?Math.round(m.comm_sum/m.count*10)/10:0,
+    exec:  m.count?Math.round(m.exec_sum/m.count*10)/10:0,
+    grow:  m.count?Math.round(m.grow_sum/m.count*10)/10:0,
+  }));
+
+  // 차트 — 상위 20개 (인원 많은 순)
+  const top20=[...jobData].sort((a,b)=>b.count-a.count).slice(0,20);
+
+  const ctx_pass=getCtx('c-job-pass',520);
+  if(ctx_pass){
+    drawBarH(ctx_pass,top20.map(j=>({label:j.job,val:j.pass_rate})),
+      {pad:90,barH:18,gap:5,color:top20.map(j=>j.pass_rate>=90?cv('--pass'):j.pass_rate>=75?cv('--warn'):cv('--fail')),
+       maxW:100,formatVal:v=>v.toFixed(1)+'%'});
+  }
+  const ctx_risk=getCtx('c-job-risk',520);
+  if(ctx_risk){
+    drawBarH(ctx_risk,top20.map(j=>({label:j.job,val:j.risk_rate})),
+      {pad:90,barH:18,gap:5,color:top20.map(j=>j.risk_rate>=60?cv('--fail'):j.risk_rate>=40?cv('--risk'):cv('--warn')),
+       maxW:100,formatVal:v=>v.toFixed(1)+'%'});
+  }
+
+  // 테이블
+  renderJobTable();
+
+  // 정렬 헤더
+  $$('#t-job-dist th.sortable').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const col=th.dataset.jcol;
+      if(jobSort.col===col)jobSort.dir*=-1;
+      else{jobSort.col=col;jobSort.dir=col==='job'?1:-1;}
+      renderJobTable();
+    });
+  });
+}
+
+function renderJobTable(){
+  const sorted=[...jobData].sort((a,b)=>{
+    const av=a[jobSort.col],bv=b[jobSort.col];
+    if(typeof av==='string')return jobSort.dir*av.localeCompare(bv,'ko');
+    return jobSort.dir*(bv-av);
+  });
+
+  $$('#t-job-dist th.sortable').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+    if(th.dataset.jcol===jobSort.col)
+      th.classList.add(jobSort.dir===1?'sort-asc':'sort-desc');
+  });
+
+  c('t-job-body').innerHTML=sorted.map(j=>`<tr>
+    <td><strong>${j.job}</strong></td>
+    <td>${j.count}</td>
+    <td>${j.pass_count}</td>
+    <td><span class="badge ${j.pass_rate>=90?'pass':j.pass_rate>=75?'warn':'fail'}">${j.pass_rate.toFixed(1)}%</span></td>
+    <td>${j.risk_count}</td>
+    <td><span class="badge ${j.risk_rate>=60?'fail':j.risk_rate>=40?'risk':'warn'}">${j.risk_rate.toFixed(1)}%</span></td>
+    <td>${j.avg_sten.toFixed(2)}</td>
+    <td>${j.learn.toFixed(1)}</td><td>${j.comm.toFixed(1)}</td>
+    <td>${j.exec.toFixed(1)}</td><td>${j.grow.toFixed(1)}</td>
+  </tr>`).join('');
 }
 
 // ======== TALENT MAP ========
