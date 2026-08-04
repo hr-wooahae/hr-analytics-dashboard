@@ -484,19 +484,24 @@ canvas{display:block}
         </div>
         <div class="table-scroll">
           <table class="data-table" id="t-job-dist">
-            <thead><tr>
-              <th class="sortable" data-jcol="job">직무</th>
-              <th class="sortable" data-jcol="count">인원</th>
-              <th class="sortable" data-jcol="pass_count">합격자</th>
-              <th class="sortable" data-jcol="pass_rate">합격률</th>
-              <th class="sortable" data-jcol="risk_count">고위험자</th>
-              <th class="sortable" data-jcol="risk_rate">고위험률</th>
-              <th class="sortable" data-jcol="avg_sten">인성 AVG</th>
-              <th class="sortable" data-jcol="learn">학습 avg</th>
-              <th class="sortable" data-jcol="comm">소통 avg</th>
-              <th class="sortable" data-jcol="exec">실행 avg</th>
-              <th class="sortable" data-jcol="grow">성장 avg</th>
-            </tr></thead>
+            <thead>
+              <tr>
+                <th rowspan="2" class="sortable" data-jcol="job" style="vertical-align:bottom">직무</th>
+                <th rowspan="2" class="sortable" data-jcol="count" style="vertical-align:bottom">인원</th>
+                <th rowspan="2" class="sortable" data-jcol="pass_count" style="vertical-align:bottom">합격자</th>
+                <th rowspan="2" class="sortable" data-jcol="pass_rate" style="vertical-align:bottom">합격률</th>
+                <th rowspan="2" class="sortable" data-jcol="risk_count" style="vertical-align:bottom">고위험자</th>
+                <th rowspan="2" class="sortable" data-jcol="risk_rate" style="vertical-align:bottom">고위험률</th>
+                <th colspan="5" style="text-align:center;border-bottom:1px solid var(--border);color:var(--accent);font-size:10px;letter-spacing:.05em;padding-bottom:4px">── 역량 STEN 평균 ──</th>
+              </tr>
+              <tr>
+                <th class="sortable" data-jcol="avg_sten">인성 통합</th>
+                <th class="sortable" data-jcol="learn">학습 STEN</th>
+                <th class="sortable" data-jcol="comm">소통 STEN</th>
+                <th class="sortable" data-jcol="exec">실행 STEN</th>
+                <th class="sortable" data-jcol="grow">성장 STEN</th>
+              </tr>
+            </thead>
             <tbody id="t-job-body"></tbody>
           </table>
         </div>
